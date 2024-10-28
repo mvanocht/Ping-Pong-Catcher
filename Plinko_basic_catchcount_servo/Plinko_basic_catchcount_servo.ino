@@ -178,10 +178,14 @@ void loop()
     lcd.print("Ball Released     ");
     lcd.setCursor(1, 1);
     lcd.print(String("Counter = ") + String(catchCounter));
-    delay(3000);
+    delay(1000);
 
     //move to the right a bit to get out of left limit for 0.5sec
     while(l_lim) {
+      lcd.setCursor(1, 0);
+      lcd.print("Moving back     ");
+      lcd.setCursor(1, 1);
+      lcd.print(String("Counter = ") + String(catchCounter));
       outputValue2 = 0;
       outputValue1 = slowMove;
       analogWrite(8, outputValue1);
