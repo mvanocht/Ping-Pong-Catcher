@@ -1,5 +1,5 @@
 // This version has left/right limit switch detect with brake, catch detect and count,
-// and when ball caught, move to right until left right hit, then run servo until ball released and then move back left until left right is not hit
+// and when ball caught, move to right until right hit, then run servo until ball released and then move back left until left right is not hit
 
 #include <Servo.h>
 #include <LiquidCrystal_I2C.h>
@@ -23,6 +23,7 @@ int catchCounter = 0; //counter how many times ball has been caught
 int catchState = 0; //current state of catch
 int lastCatchState = 0; //previous state of catch
 int servoAngle = 0; //angle command for servo
+int servoAngleChangeWait = 10; //wait this ms before incrementing angle
 int slowMove = 50; // PWM (0-255) during slow moves
 
 Servo myservo; //declare servo object
@@ -34,14 +35,14 @@ void setup()
   lcd.backlight();
 
   pinMode(A0, INPUT); //for joystick sensing
-  pinMode(5, INPUT); //for output of catch sensor (photo diode). High = a ball is in the cup
+  pinMode(5, INPUT); //for output of catch sensor (opto detector). High = a ball is in the cup
   pinMode(6, INPUT_PULLUP); //for right limit logic. HIGH = limit detected, LOW = no limit. This pin has a PULLUP (default HIGH)
   pinMode(7, INPUT_PULLUP); //for left limit logic. HIGH = limit detected, LOW = no limit. This pin has a PULLUP (default HIGH)
   pinMode(8, OUTPUT); //for Brushed motor PWM1
   pinMode(9, OUTPUT); //for Brushed motor PWM2
   myservo.attach(10,1000,2000); //pin 10 for PWM for the cup tipping servo
   myservo.write(servoAngle); //set servo motor to zero degrees initially
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   lcd.setCursor(5, 0);
   lcd.print("ROHM");
@@ -90,7 +91,7 @@ void loop()
   analogWrite(8, outputValue1);
   analogWrite(9, outputValue2);
   
-// LCD messages
+// Normal play LCD messages
   if(r_lim && !l_lim) {
       lcd.setCursor(1, 0);
       lcd.print("Right Limit     ");
@@ -107,16 +108,18 @@ void loop()
   if(!r_lim && !l_lim) {
       lcd.setCursor(1, 0);
       if(!catchCounter) {
-        lcd.print("Catch the Ball   ");
+        lcd.print("Catch the Ball   "); //when counter = 0 display this messaage
       }
       else {
-        lcd.print("Keep Playing      ");
+        lcd.print("Keep Playing      "); //if counter is > 0, display this message instead
       }
       lcd.setCursor(1, 1);
       lcd.print(String("Counter = ") + String(catchCounter) + String("        "));
     }
 
-  catchState = digitalRead(5);
+  //Section for ball caught + moving to right + dumping ball out using servo + move back to left
+  //Joytstick is ignored the entire duration of this operation
+  catchState = digitalRead(5); //read the input from the opto detector
   //compare catchState to previous
   if (catchState != lastCatchState) {
     //state has changed, increment counter
@@ -159,42 +162,41 @@ void loop()
         delay(2000);
 
         //increase angle
-        Serial.print("Starting Servo increase");
+        //Serial.print("Starting Servo increase");
         for(servoAngle; servoAngle <= 180; servoAngle++) {
           myservo.write(servoAngle);
-          Serial.print("servo Angle = "); Serial.print(servoAngle); Serial.print('\n');
+          //Serial.print("servo Angle = "); Serial.print(servoAngle); Serial.print('\n');
           if(!(servoAngle%10)) { //if angle is multiple of 10's, show on LCD screen
             lcd.setCursor(1, 0);
             lcd.print("Releasing Ball     ");
             lcd.setCursor(1, 1);
             lcd.print(String("Angle = ") + String(servoAngle) + String("        "));
           }
-          delay(10); // wait this amount every change in angle
+          delay(servoAngleChangeWait); // wait this amount every change in angle
         }
         delay(1000); //wait 1sec
         //decrease angle
-        Serial.print("Decreasing angle");
+        //Serial.print("Decreasing angle");
         for(servoAngle; servoAngle >= 0; servoAngle--) {
           myservo.write(servoAngle); //
-          Serial.print("servo Angle = "); Serial.print(servoAngle); Serial.print('\n');
+          //Serial.print("servo Angle = "); Serial.print(servoAngle); Serial.print('\n');
           if(!(servoAngle%10)) { //if angle is multiple of 10's, show on LCD screen
             lcd.setCursor(1, 0);
             lcd.print("Releasing Ball     ");
             lcd.setCursor(1, 1);
             lcd.print(String("Angle = ") + String(servoAngle) + String("        "));
           }
-          delay(10); // wait this amount every change in angle
+          delay(servoAngleChangeWait); // wait this amount every change in angle
         }
         delay(1000);
         catchState = digitalRead(5); //check again catchState;
-        Serial.print("catchState = ");
-        Serial.print(catchState);
-        Serial.print('\n');
+        //Serial.print("catchState = "); Serial.print(catchState); Serial.print('\n');
         //delay(1000);
       }
     }
-    delay(50); //debounce
-    lastCatchState = catchState; //update last state for next time
+    //ball is now released
+    delay(1000); //debounce
+    lastCatchState = catchState; //update last catch state for next time to detect rising edge again
     lcd.setCursor(1, 0);
     lcd.print("Ball Released     ");
     lcd.setCursor(1, 1);
@@ -204,25 +206,22 @@ void loop()
     //move to the left a bit to get out of right limit
     while(r_lim) {
       lcd.setCursor(1, 0);
-      lcd.print("Get ready .....     ");
+      lcd.print("Moving cup back....     ");
       lcd.setCursor(1, 1);
-      lcd.print(String("Counter = ") + String(catchCounter));
+      lcd.print("Get ready .....     ");
       outputValue1 = 0;
       outputValue2 = slowMove;
       analogWrite(8, outputValue1);
       analogWrite(9, outputValue2);
       r_lim = digitalRead(6); //check status of right limit
     }
-    //delay(1000);
+    delay(1000);
     outputValue2 = 0;
     outputValue1 = 0;
     analogWrite(8, outputValue1);
     analogWrite(9, outputValue2);
-
-    
+    delay(1000);
   }
-
-
   // Serial.print("sensor = ");
   // Serial.print(sensorValue);
   // Serial.print(" joyposition = ");
