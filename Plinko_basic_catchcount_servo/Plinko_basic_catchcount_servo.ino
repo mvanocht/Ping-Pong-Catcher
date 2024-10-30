@@ -1,5 +1,5 @@
 // This version has left/right limit switch detect with brake, catch detect and count,
-// and when ball caught, move to left until left limit hit, then run servo until ball released and then move back right until left limit is not hit
+// and when ball caught, move to right until left right hit, then run servo until ball released and then move back left until left right is not hit
 
 #include <Servo.h>
 #include <LiquidCrystal_I2C.h>
