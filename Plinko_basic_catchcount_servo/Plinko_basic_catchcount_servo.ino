@@ -1,5 +1,6 @@
 // This version has left/right limit switch detect with brake, catch detect and count,
 // and when ball caught, move to right until right hit, then run servo until ball released and then move back left until left right is not hit
+// Debounce implemented on RLIM and LLIM switches, as well as OPTO input
 
 #include <Servo.h>
 #include <LiquidCrystal_I2C.h>
@@ -16,15 +17,25 @@ int sensorValue = 0; //for joystick sensing
 int outputValue1 = 0; //for Brushed motor PWM1
 int outputValue2 = 0; //for Brushed motor PWM2
 int servomotorValue = 0; //for servo motor 980Hz PWM
-int r_lim = 0; //for right limit logic
-int l_lim = 0; //for left limit logic
-int joyPosition = 0; //0 = left, 1 = right
+boolean r_lim = false; //for right limit logic
+boolean l_lim = false; //for left limit logic
+int joyPosition = 0; //0 = left, 1 = right, 2 = middle
 int catchCounter = 0; //counter how many times ball has been caught
-int catchState = 0; //current state of catch
-int lastCatchState = 0; //previous state of catch
+boolean catchState = 0; //current state of catch
+boolean lastCatchState = 0; //previous state of catch
 int servoAngle = 0; //angle command for servo
 int servoAngleChangeWait = 10; //wait this ms before incrementing angle
 int slowMove = 50; // PWM (0-255) during slow moves
+const unsigned long DebounceTime = 10;
+unsigned long RLIMButtonStateChangeTime = 0; // Debounce timer
+unsigned long LLIMButtonStateChangeTime = 0; // Debounce timer
+unsigned long OPTOButtonStateChangeTime = 0; // Debounce timer
+boolean RLIMButtonWasPressed = true; //active low
+boolean LLIMButtonWasPressed = true; //active low
+boolean OPTOButtonWasPressed = false; //active high
+boolean RLIMState = false;
+boolean LLIMState = false;
+boolean OPTOState = false;
 
 Servo myservo; //declare servo object
 
@@ -51,12 +62,87 @@ void setup()
   delay(2000);
   lcd.setCursor(1, 0);
 }
+
+void checkRLIMButton()
+{
+  unsigned long currentTime = millis(); //the current system since restart of Arduino
+  //RLIM switch
+  boolean RLIMbuttonIsPressed = digitalRead(6);
+  //Serial.print("RLIM button pressed ");Serial.print(RLIMbuttonIsPressed);Serial.print('\n');
+  if ((RLIMbuttonIsPressed != RLIMButtonWasPressed) &&
+      (currentTime - RLIMButtonStateChangeTime > DebounceTime))
+  {
+    // Button state has changed
+    RLIMButtonStateChangeTime = currentTime;
+    RLIMButtonWasPressed = RLIMbuttonIsPressed;
+
+    if (RLIMButtonWasPressed)
+    {
+      RLIMState = true;
+    }
+    else
+    {
+      RLIMState = false;
+    }
+  }
+}
+
+void checkLLIMButton()
+{
+  unsigned long currentTime = millis(); //the current system since restart of Arduino
+  //LLIM switch
+  boolean LLIMbuttonIsPressed = digitalRead(7); //Active Low
+  //Serial.print("LLIM button pressed ");Serial.print(LLIMbuttonIsPressed);Serial.print('\n');
+  if ((LLIMbuttonIsPressed != LLIMButtonWasPressed) &&
+      (currentTime - LLIMButtonStateChangeTime > DebounceTime))
+  {
+    // Button state has changed
+    LLIMButtonStateChangeTime = currentTime;
+    LLIMButtonWasPressed = LLIMbuttonIsPressed;
+
+    if (LLIMButtonWasPressed)
+    {
+      LLIMState = true;
+    }
+    else
+    {
+      LLIMState = false;
+    }
+  }
+
+}
+
+void checkOPTOButton()
+{
+
+  unsigned long currentTime = millis(); //the current system since restart of Arduino
+  //OPTO detect
+  boolean OPTObuttonIsPressed = digitalRead(5); //Active High
+  if ((OPTObuttonIsPressed != OPTOButtonWasPressed) &&
+      (currentTime - OPTOButtonStateChangeTime > DebounceTime))
+  {
+    // Button state has changed
+    OPTOButtonStateChangeTime = currentTime;
+    OPTOButtonWasPressed = OPTObuttonIsPressed;
+
+    if (OPTOButtonWasPressed)
+    {
+      OPTOState = true;
+    }
+    else
+    {
+      OPTOState = false;
+    }
+  }
+
+}
+
 void loop()
 {
 
-  // read the value from the sensor
+  ///////////JOYSTICK OPERATION////////////
+  // read the value from the joystick
   sensorValue = analogRead(A0);
-  
   if (sensorValue < 400) {
     joyPosition = 0;
   	}
@@ -68,8 +154,14 @@ void loop()
     }
 
   if(joyPosition != 2) {
-  r_lim = digitalRead(6) && joyPosition;
-  l_lim = digitalRead(7) && !joyPosition;
+  checkLLIMButton();
+  checkRLIMButton();
+  //Serial.print("RLIMState "); Serial.print(RLIMState); Serial.print('\n');
+  //Serial.print("LLIMState "); Serial.print(LLIMState); Serial.print('\n');
+  r_lim = RLIMState && joyPosition;
+  l_lim = LLIMState && !joyPosition;
+  //Serial.print("RLIM "); Serial.print(r_lim); Serial.print('\n');
+  //Serial.print("LLIM "); Serial.print(l_lim); Serial.print('\n');
   }
 
 //Sensing of Joystick and PWM duty on pin 8 and pin 9
@@ -86,12 +178,14 @@ void loop()
     outputValue1 = 255;
     outputValue2 = 255;
   }
+///////////JOYSTICK OPERATION////////////
 
+//////////MOTOR OPERATION//////////////
 //asign value to PWM pins to motor EVK
   analogWrite(8, outputValue1);
   analogWrite(9, outputValue2);
   
-// Normal play LCD messages
+////////// Normal play LCD messages//////////
   if(r_lim && !l_lim) {
       lcd.setCursor(1, 0);
       lcd.print("Right Limit     ");
@@ -116,11 +210,16 @@ void loop()
       lcd.setCursor(1, 1);
       lcd.print(String("Counter = ") + String(catchCounter) + String("        "));
     }
+  
+
 
   //Section for ball caught + moving to right + dumping ball out using servo + move back to left
   //Joytstick is ignored the entire duration of this operation
-  catchState = digitalRead(5); //read the input from the opto detector
+  checkOPTOButton();
+  catchState = OPTOState;
+
   //compare catchState to previous
+  //during the below operations, we do not care about the actual Opto output
   if (catchState != lastCatchState) {
     //state has changed, increment counter
     if (catchState) {
@@ -131,13 +230,19 @@ void loop()
       lcd.setCursor(1, 1);
       lcd.print(String("Counter = ") + String(catchCounter) + String("        "));
 
-      //move slowly to the right until left limit is hit, ignore joystick, do this one time
+      //move slowly to the right until right limit is hit, ignore joystick, do this one time
+      delay(1000);
       while(!r_lim) {
+        lcd.setCursor(1, 0);
+        lcd.print("Ball Caught     ");
+        lcd.setCursor(1, 1);
+        lcd.print("Going to Right     ");
         //move right slowly
-        delay(1000);
+        //delay(1000);
         outputValue1 = slowMove;
         outputValue2 = 0;
-        r_lim = digitalRead(6); //keep checking right limit
+        checkRLIMButton();
+        r_lim = RLIMState; //keep checking right limit
         if(r_lim) {
           //brake
           outputValue2 = 255;
@@ -145,16 +250,12 @@ void loop()
         }
         analogWrite(8, outputValue1);
         analogWrite(9, outputValue2);
-        lcd.setCursor(1, 0);
-        lcd.print("Ball Caught     ");
-        lcd.setCursor(1, 1);
-        lcd.print("Going to Right     ");;
+        
       }
       delay(2000);
 
       //start moving servo to 180 degrees slowly
       while(catchState) {
-
         lcd.setCursor(1, 0);
         lcd.print("Releasing Ball     ");
         lcd.setCursor(1, 1);
@@ -193,47 +294,43 @@ void loop()
         //Serial.print("catchState = "); Serial.print(catchState); Serial.print('\n');
         //delay(1000);
       }
-    }
-    //ball is now released
-    delay(1000); //debounce
-    lastCatchState = catchState; //update last catch state for next time to detect rising edge again
-    lcd.setCursor(1, 0);
-    lcd.print("Ball Released     ");
-    lcd.setCursor(1, 1);
-    lcd.print(String("Counter = ") + String(catchCounter) + String("           "));
-    delay(1000);
 
-    //move to the left a bit to get out of right limit
-    while(r_lim) {
+      //ball is now released
+      delay(1000); //debounce
+      lastCatchState = catchState; //update last catch state for next time to detect rising edge again
       lcd.setCursor(1, 0);
-      lcd.print("Moving cup back....     ");
+      lcd.print("Ball Released     ");
       lcd.setCursor(1, 1);
-      lcd.print("Get ready .....     ");
-      outputValue1 = 0;
-      outputValue2 = slowMove;
+      lcd.print(String("Counter = ") + String(catchCounter) + String("           "));
+      delay(1000);
+
+      //move to the left a bit to get out of right limit
+      while(r_lim) {
+        lcd.setCursor(1, 0);
+        lcd.print("Moving cup back....     ");
+        lcd.setCursor(1, 1);
+        lcd.print("Get ready .....     ");
+        outputValue1 = 0;
+        outputValue2 = slowMove;
+        analogWrite(8, outputValue1);
+        analogWrite(9, outputValue2);
+        checkRLIMButton();
+        r_lim = RLIMState; //check status of right limit
+      }
+      //delay(1000);
+      outputValue2 = 0; //reset to prevent motor from turning
+      outputValue1 = 0; //reset to prevent motor from turning
       analogWrite(8, outputValue1);
       analogWrite(9, outputValue2);
-      r_lim = digitalRead(6); //check status of right limit
+      delay(2000);
+
     }
-    delay(1000);
-    outputValue2 = 0;
-    outputValue1 = 0;
-    analogWrite(8, outputValue1);
-    analogWrite(9, outputValue2);
-    delay(1000);
+
+    else {
+    // catchState is low, and we don't care
+    }
+
+    
   }
-  // Serial.print("sensor = ");
-  // Serial.print(sensorValue);
-  // Serial.print(" joyposition = ");
-  // Serial.print(joyPosition);
-  // Serial.print("  L_lim = ");
-  // Serial.println(l_lim);
-  // Serial.print("  R_lim = ");
-  // Serial.println(r_lim);
-  // Serial.print("  output1 = ");
-  // Serial.println(outputValue1);
-  // Serial.print("  output2 = ");
-  // Serial.println(outputValue2);
-  // delay(1000);
 
 }
