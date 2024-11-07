@@ -25,7 +25,8 @@ boolean catchState = 0; //current state of catch
 boolean lastCatchState = 0; //previous state of catch
 int servoAngle = 0; //angle command for servo
 int servoAngleChangeWait = 10; //wait this ms before incrementing angle
-int slowMove = 50; // PWM (0-255) during slow moves
+int slowMove = 100; // PWM (0-255) during slow moves
+int fastMove = 200; // PWM (0-255) during slow moves
 const unsigned long DebounceTime = 10;
 unsigned long RLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long LLIMButtonStateChangeTime = 0; // Debounce timer
@@ -51,8 +52,10 @@ void setup()
   pinMode(7, INPUT_PULLUP); //for left limit logic. HIGH = limit detected, LOW = no limit. This pin has a PULLUP (default HIGH)
   pinMode(8, OUTPUT); //for Brushed motor PWM1
   pinMode(9, OUTPUT); //for Brushed motor PWM2
-  myservo.attach(10,1000,2000); //pin 10 for PWM for the cup tipping servo
+
+  myservo.attach(10,550,2000); //pin 10 for PWM for the cup tipping servo
   myservo.write(servoAngle); //set servo motor to zero degrees initially
+
   //Serial.begin(9600);
 
   lcd.setCursor(5, 0);
@@ -61,6 +64,9 @@ void setup()
   lcd.print("SEMICONDUCTOR");
   delay(2000);
   lcd.setCursor(1, 0);
+  lcd.print("Catch the Ball !!!  ");
+  lcd.setCursor(1, 1);
+  lcd.print(String("Counter = ") + String(catchCounter) + String("        "));
 }
 
 void checkRLIMButton()
@@ -78,11 +84,11 @@ void checkRLIMButton()
 
     if (RLIMButtonWasPressed)
     {
-      RLIMState = true;
+      RLIMState = false;
     }
     else
     {
-      RLIMState = false;
+      RLIMState = true;
     }
   }
 }
@@ -102,11 +108,11 @@ void checkLLIMButton()
 
     if (LLIMButtonWasPressed)
     {
-      LLIMState = true;
+      LLIMState = false;
     }
     else
     {
-      LLIMState = false;
+      LLIMState = true;
     }
   }
 
@@ -167,11 +173,11 @@ void loop()
 //Sensing of Joystick and PWM duty on pin 8 and pin 9
 //sense for right
   outputValue1 = map(sensorValue,600, 1023, 0, 255);
-  outputValue1 = constrain(outputValue1,0,!r_lim*255);
+  outputValue1 = constrain(outputValue1,0,!r_lim*255*0.5);
  
  //sense for left
   outputValue2 = map(sensorValue, 0, 423, 255, 0);
-  outputValue2 = constrain(outputValue2,0,!l_lim*255);
+  outputValue2 = constrain(outputValue2,0,!l_lim*255*0.5);
 
 //brake condition
   if(r_lim || l_lim) {
@@ -252,47 +258,52 @@ void loop()
         analogWrite(9, outputValue2);
         
       }
-      delay(2000);
+      delay(100);
 
       //start moving servo to 180 degrees slowly
       while(catchState) {
+
+        //myservo.attach(10,550,2000); //pin 10 for PWM for the cup tipping servo
+        //myservo.write(servoAngle); //set servo motor to zero degrees initially
+
         lcd.setCursor(1, 0);
         lcd.print("Releasing Ball     ");
         lcd.setCursor(1, 1);
         lcd.print(String("Tipping cup      "));
-        delay(2000);
+        delay(100);
 
         //increase angle
         //Serial.print("Starting Servo increase");
         for(servoAngle; servoAngle <= 180; servoAngle++) {
           myservo.write(servoAngle);
           //Serial.print("servo Angle = "); Serial.print(servoAngle); Serial.print('\n');
-          if(!(servoAngle%10)) { //if angle is multiple of 10's, show on LCD screen
-            lcd.setCursor(1, 0);
-            lcd.print("Releasing Ball     ");
-            lcd.setCursor(1, 1);
-            lcd.print(String("Angle = ") + String(servoAngle) + String("        "));
-          }
+          // if(!(servoAngle%10)) { //if angle is multiple of 10's, show on LCD screen
+          //   lcd.setCursor(1, 0);
+          //   lcd.print("Releasing Ball     ");
+          //   lcd.setCursor(1, 1);
+          //   lcd.print(String("Angle = ") + String(servoAngle) + String("        "));
+          // }
           delay(servoAngleChangeWait); // wait this amount every change in angle
         }
-        delay(1000); //wait 1sec
+        delay(100); //wait 1sec
         //decrease angle
         //Serial.print("Decreasing angle");
         for(servoAngle; servoAngle >= 0; servoAngle--) {
           myservo.write(servoAngle); //
           //Serial.print("servo Angle = "); Serial.print(servoAngle); Serial.print('\n');
-          if(!(servoAngle%10)) { //if angle is multiple of 10's, show on LCD screen
-            lcd.setCursor(1, 0);
-            lcd.print("Releasing Ball     ");
-            lcd.setCursor(1, 1);
-            lcd.print(String("Angle = ") + String(servoAngle) + String("        "));
-          }
+          // if(!(servoAngle%10)) { //if angle is multiple of 10's, show on LCD screen
+          //   lcd.setCursor(1, 0);
+          //   lcd.print("Releasing Ball     ");
+          //   lcd.setCursor(1, 1);
+          //   lcd.print(String("Angle = ") + String(servoAngle) + String("        "));
+          // }
           delay(servoAngleChangeWait); // wait this amount every change in angle
         }
-        delay(1000);
+        delay(100);
         catchState = digitalRead(5); //check again catchState;
         //Serial.print("catchState = "); Serial.print(catchState); Serial.print('\n');
         //delay(1000);
+
       }
 
       //ball is now released
@@ -302,7 +313,7 @@ void loop()
       lcd.print("Ball Released     ");
       lcd.setCursor(1, 1);
       lcd.print(String("Counter = ") + String(catchCounter) + String("           "));
-      delay(1000);
+      delay(100);
 
       //move to the left a bit to get out of right limit
       while(r_lim) {
@@ -311,7 +322,7 @@ void loop()
         lcd.setCursor(1, 1);
         lcd.print("Get ready .....     ");
         outputValue1 = 0;
-        outputValue2 = slowMove;
+        outputValue2 = fastMove;
         analogWrite(8, outputValue1);
         analogWrite(9, outputValue2);
         checkRLIMButton();
