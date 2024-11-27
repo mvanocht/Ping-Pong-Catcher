@@ -28,6 +28,7 @@ int servoAngleChangeWait = 10; //wait this ms before incrementing angle
 int slowMove = 100; // PWM (0-255) during slow moves
 int fastMove = 200; // PWM (0-255) during slow moves
 const unsigned long DebounceTime = 10;
+const unsigned long OPTODebounceTime = 1000;
 unsigned long RLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long LLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long OPTOButtonStateChangeTime = 0; // Debounce timer
@@ -128,7 +129,7 @@ void checkOPTOButton()
   //OPTO detect
   boolean OPTObuttonIsPressed = digitalRead(5); //Active High
   if ((OPTObuttonIsPressed != OPTOButtonWasPressed) &&
-      (currentTime - OPTOButtonStateChangeTime > DebounceTime))
+      (currentTime - OPTOButtonStateChangeTime > OPTODebounceTime))
   {
     // Button state has changed
     OPTOButtonStateChangeTime = currentTime;
