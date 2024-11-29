@@ -28,6 +28,7 @@ int servoAngleChangeWait = 10; //wait this ms before incrementing angle
 int slowMove = 100; // PWM (0-255) during slow moves
 int fastMove = 200; // PWM (0-255) during slow moves
 const unsigned long DebounceTime = 10;
+const unsigned long OTPODebounceTime = 1000;
 unsigned long RLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long LLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long OPTOButtonStateChangeTime = 0; // Debounce timer
@@ -100,7 +101,7 @@ void checkLLIMButton()
   boolean LLIMbuttonIsPressed = digitalRead(7); //Active Low
   //Serial.print("LLIM button pressed ");Serial.print(LLIMbuttonIsPressed);Serial.print('\n');
   if ((LLIMbuttonIsPressed != LLIMButtonWasPressed) &&
-      (currentTime - LLIMButtonStateChangeTime > DebounceTime))
+      (currentTime - LLIMButtonStateChangeTime > OTPODebounceTime))
   {
     // Button state has changed
     LLIMButtonStateChangeTime = currentTime;
