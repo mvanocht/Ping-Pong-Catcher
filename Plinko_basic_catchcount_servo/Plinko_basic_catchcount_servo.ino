@@ -28,12 +28,13 @@ int servoAngleChangeWait = 10; //wait this ms before incrementing angle
 int slowMove = 100; // PWM (0-255) during slow moves
 int fastMove = 200; // PWM (0-255) during slow moves
 const unsigned long DebounceTime = 10;
-const unsigned long OPTODebounceTime = 1000;
+const unsigned long OPTODebounceTimeHigh = 1000;
+const unsigned long OPTODebounceTimeLow = 10;
 unsigned long RLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long LLIMButtonStateChangeTime = 0; // Debounce timer
 unsigned long OPTOButtonStateChangeTime = 0; // Debounce timer
-boolean RLIMButtonWasPressed = true; //active low
-boolean LLIMButtonWasPressed = true; //active low
+boolean RLIMButtonWasPressed = true; //active high
+boolean LLIMButtonWasPressed = true; //active high
 boolean OPTOButtonWasPressed = false; //active high
 boolean RLIMState = false;
 boolean LLIMState = false;
@@ -72,49 +73,42 @@ void setup()
 
 void checkRLIMButton()
 {
-  unsigned long currentTime = millis(); //the current system since restart of Arduino
-  //RLIM switch
+  //RLIM detect
   boolean RLIMbuttonIsPressed = digitalRead(6); //Active High
-  //Serial.print("RLIM button pressed ");Serial.print(RLIMbuttonIsPressed);Serial.print('\n');
-  if ((RLIMbuttonIsPressed != RLIMButtonWasPressed) &&
-      (currentTime - RLIMButtonStateChangeTime > DebounceTime))
-  {
-    // Button state has changed
-    RLIMButtonStateChangeTime = currentTime;
+  
+  if(RLIMbuttonIsPressed != RLIMButtonWasPressed) { //button state changed from before
     RLIMButtonWasPressed = RLIMbuttonIsPressed;
+    RLIMButtonStateChangeTime = millis(); //record the current time when button state changed
+  }
 
-    if (RLIMButtonWasPressed)
-    {
-      RLIMState = true;
-    }
-    else
-    {
+  if ((millis() - RLIMButtonStateChangeTime > DebounceTime) && RLIMButtonWasPressed) //if time has passed more than debounce time and Button is High
+  {
+    RLIMState = true;
+  }
+  else //going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
+  {
       RLIMState = false;
-    }
   }
 }
 
 void checkLLIMButton()
 {
-  unsigned long currentTime = millis(); //the current system since restart of Arduino
-  //LLIM switch
-  boolean LLIMbuttonIsPressed = digitalRead(7); //Active High
-  //Serial.print("LLIM button pressed ");Serial.print(LLIMbuttonIsPressed);Serial.print('\n');
-  if ((LLIMbuttonIsPressed != LLIMButtonWasPressed) &&
-      (currentTime - LLIMButtonStateChangeTime > DebounceTime))
-  {
-    // Button state has changed
-    LLIMButtonStateChangeTime = currentTime;
-    LLIMButtonWasPressed = LLIMbuttonIsPressed;
 
-    if (LLIMButtonWasPressed)
-    {
-      LLIMState = true;
-    }
-    else
-    {
+  //LLIM detect
+  boolean LLIMbuttonIsPressed = digitalRead(7); //Active High
+  
+  if(LLIMbuttonIsPressed != LLIMButtonWasPressed) { //button state changed from before
+    LLIMButtonWasPressed = LLIMbuttonIsPressed;
+    LLIMButtonStateChangeTime = millis(); //record the current time when button state changed
+  }
+
+  if ((millis() - LLIMButtonStateChangeTime > DebounceTime) && LLIMButtonWasPressed) //if time has passed more than debounce time and Button is High
+  {
+    LLIMState = true;
+  }
+  else //going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
+  {
       LLIMState = false;
-    }
   }
 
 }
@@ -122,26 +116,23 @@ void checkLLIMButton()
 void checkOPTOButton()
 {
 
-  unsigned long currentTime = millis(); //the current system since restart of Arduino
   //OPTO detect
   boolean OPTObuttonIsPressed = digitalRead(5); //Active High
-  if ((OPTObuttonIsPressed != OPTOButtonWasPressed) &&
-      (currentTime - OPTOButtonStateChangeTime > OPTODebounceTime))
-  {
-    // Button state has changed
-    OPTOButtonStateChangeTime = currentTime;
+  
+  if(OPTObuttonIsPressed != OPTOButtonWasPressed) { //button state changed from before
     OPTOButtonWasPressed = OPTObuttonIsPressed;
-
-    if (OPTOButtonWasPressed)
-    {
-      OPTOState = true;
-    }
-    else
-    {
-      OPTOState = false;
-    }
+    OPTOButtonStateChangeTime = millis(); //record the current time when button state changed
   }
 
+  if ((millis() - OPTOButtonStateChangeTime > OPTODebounceTimeHigh) && OPTOButtonWasPressed) //if time has passed more than debounce time and Button is High
+  {
+    OPTOState = true;
+  }
+  else //going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
+  {
+    OPTOState = false;
+  }
+  
 }
 
 void loop()
@@ -224,6 +215,8 @@ void loop()
   //Joytstick is ignored the entire duration of this operation
   checkOPTOButton();
   catchState = OPTOState;
+  //Serial.print("catchState ");Serial.print(catchState);Serial.print('\n');
+  //Serial.print("LastcatchState ");Serial.print(lastCatchState);Serial.print('\n');
 
   //compare catchState to previous
   //during the below operations, we do not care about the actual Opto output
@@ -238,7 +231,7 @@ void loop()
       lcd.print(String("Counter = ") + String(catchCounter) + String("        "));
 
       //move slowly to the right until right limit is hit, ignore joystick, do this one time
-      delay(1000);
+      delay(100);
       while(!r_lim) {
         lcd.setCursor(1, 0);
         lcd.print("Ball Caught     ");
