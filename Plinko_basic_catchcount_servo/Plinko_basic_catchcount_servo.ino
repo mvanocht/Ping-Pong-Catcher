@@ -74,7 +74,7 @@ void checkRLIMButton()
 {
   unsigned long currentTime = millis(); //the current system since restart of Arduino
   //RLIM switch
-  boolean RLIMbuttonIsPressed = digitalRead(6);
+  boolean RLIMbuttonIsPressed = digitalRead(6); //Active High
   //Serial.print("RLIM button pressed ");Serial.print(RLIMbuttonIsPressed);Serial.print('\n');
   if ((RLIMbuttonIsPressed != RLIMButtonWasPressed) &&
       (currentTime - RLIMButtonStateChangeTime > DebounceTime))
@@ -85,11 +85,11 @@ void checkRLIMButton()
 
     if (RLIMButtonWasPressed)
     {
-      RLIMState = false;
+      RLIMState = true;
     }
     else
     {
-      RLIMState = true;
+      RLIMState = false;
     }
   }
 }
@@ -98,7 +98,7 @@ void checkLLIMButton()
 {
   unsigned long currentTime = millis(); //the current system since restart of Arduino
   //LLIM switch
-  boolean LLIMbuttonIsPressed = digitalRead(7); //Active Low
+  boolean LLIMbuttonIsPressed = digitalRead(7); //Active High
   //Serial.print("LLIM button pressed ");Serial.print(LLIMbuttonIsPressed);Serial.print('\n');
   if ((LLIMbuttonIsPressed != LLIMButtonWasPressed) &&
       (currentTime - LLIMButtonStateChangeTime > DebounceTime))
@@ -109,11 +109,11 @@ void checkLLIMButton()
 
     if (LLIMButtonWasPressed)
     {
-      LLIMState = false;
+      LLIMState = true;
     }
     else
     {
-      LLIMState = true;
+      LLIMState = false;
     }
   }
 
