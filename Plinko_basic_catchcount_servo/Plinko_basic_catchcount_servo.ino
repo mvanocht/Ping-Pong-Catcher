@@ -81,13 +81,13 @@ void checkRLIMButton()
     RLIMButtonStateChangeTime = millis(); //record the current time when button state changed
   }
 
-  if ((millis() - RLIMButtonStateChangeTime > DebounceTime) && RLIMButtonWasPressed) //if time has passed more than debounce time and Button is High
+  if ((millis() - RLIMButtonStateChangeTime > DebounceTime) && !RLIMButtonWasPressed) //if time has passed more than debounce time and Button is Low
   {
-    RLIMState = true;
+    RLIMState = false;
   }
-  else //going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
+  else if (RLIMButtonWasPressed)//going to high does not require any debounce (if want to flip polarity, the debounce has to moved here)
   {
-      RLIMState = false;
+      RLIMState = true;
   }
 }
 
@@ -102,13 +102,13 @@ void checkLLIMButton()
     LLIMButtonStateChangeTime = millis(); //record the current time when button state changed
   }
 
-  if ((millis() - LLIMButtonStateChangeTime > DebounceTime) && LLIMButtonWasPressed) //if time has passed more than debounce time and Button is High
+  if ((millis() - LLIMButtonStateChangeTime > DebounceTime) && !LLIMButtonWasPressed) //if time has passed more than debounce time and Button is Low
   {
-    LLIMState = true;
+    LLIMState = false;
   }
-  else //going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
+  else if (LLIMButtonWasPressed) //going to high does not require any debounce (if want to flip polarity, the debounce has to moved here)
   {
-      LLIMState = false;
+      LLIMState = true;
   }
 
 }
@@ -128,7 +128,7 @@ void checkOPTOButton()
   {
     OPTOState = true;
   }
-  else //going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
+  else if (!OPTOButtonWasPressed)//going to low does not require any debounce (if want to flip polarity, the debounce has to moved here)
   {
     OPTOState = false;
   }
