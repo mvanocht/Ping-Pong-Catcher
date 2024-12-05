@@ -550,6 +550,10 @@ void checkLimitSwitches()
       checkLLIMButton();
       if (LLIMState)
       {
+        lcd.setCursor(1, 0);
+        lcd.print("****LLIM-HIT**** ");
+        lcd.setCursor(1, 1);
+        lcd.print(" ###!!!###!!!###!!!###!!! ");
         analogWrite(8, 255);
         analogWrite(9, 255);
         break;
