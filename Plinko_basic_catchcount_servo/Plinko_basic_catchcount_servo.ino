@@ -2,6 +2,8 @@
 // and when ball caught, move to right until right hit, then run servo until ball released and then move back left until left right is not hit
 // Debounce implemented on RLIM and LLIM switches, as well as OPTO input
 
+// Last modified: 2/13/25: changed the limit when moving right from 50% to 60% of full value
+
 #include <Servo.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
@@ -165,7 +167,7 @@ void loop()
 //Sensing of Joystick and PWM duty on pin 8 and pin 9
 //sense for right
   outputValue1 = map(sensorValue,600, 1023, 0, 255);
-  outputValue1 = constrain(outputValue1,0,!r_lim*255*0.5);
+  outputValue1 = constrain(outputValue1,0,!r_lim*255*0.6);
  
  //sense for left
   outputValue2 = map(sensorValue, 0, 423, 255, 0);
