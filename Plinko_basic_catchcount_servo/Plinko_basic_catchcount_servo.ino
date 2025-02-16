@@ -3,6 +3,7 @@
 // Debounce implemented on RLIM and LLIM switches, as well as OPTO input
 
 // Last modified: 2/13/25: changed the limit when moving right from 50% to 60% of full value
+// Last modified: 2/16/25: changed slowMove from 100 to 150
 
 #include <Servo.h>
 #include <LiquidCrystal_I2C.h>
@@ -27,7 +28,7 @@ boolean catchState = 0; //current state of catch
 boolean lastCatchState = 0; //previous state of catch
 int servoAngle = 0; //angle command for servo
 int servoAngleChangeWait = 10; //wait this ms before incrementing angle
-int slowMove = 100; // PWM (0-255) during slow moves
+int slowMove = 150; // PWM (0-255) during slow moves
 int fastMove = 200; // PWM (0-255) during slow moves
 const unsigned long DebounceTime = 10;
 const unsigned long OPTODebounceTimeHigh = 1000;
